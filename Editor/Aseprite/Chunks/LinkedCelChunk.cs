@@ -27,7 +27,7 @@ namespace Aseprite.Chunks
 
         public override ushort Width { get { return LinkedCel.Width; } }
         public override ushort Height { get { return LinkedCel.Height; } }
-        public override Pixel[] RawPixelData { get { return LinkedCel.RawPixelData; } }
+        public override PixelBuffer RawPixelData { get { return LinkedCel.RawPixelData; } }
 
 
         public LinkedCelChunk(uint length, ushort layerIndex, short x, short y, byte opacity, Frame frame, BinaryReader reader) : base(length, layerIndex, x, y, opacity, CelType.Linked)

@@ -139,10 +139,8 @@ namespace AsepriteImporter
                             break;
                     }
 
-                    atlas.SetPixels((int) spriteRect.x, (int) spriteRect.y, (int) spriteRect.width,
-                        (int) spriteRect.height, sprites[index].GetPixels());
-
-                    atlas.Apply();
+                    atlas.SetPixels32((int) spriteRect.x, (int) spriteRect.y, (int) spriteRect.width,
+                        (int) spriteRect.height, sprites[index].GetPixels32());
 
                     var importData = new SpriteImportData
                     {
@@ -163,6 +161,7 @@ namespace AsepriteImporter
                     break;
             }
 
+            atlas.Apply();
             spriteData = spriteImportData.ToArray();
             return atlas;
         }
@@ -196,10 +195,9 @@ namespace AsepriteImporter
                         spriteSize.x, spriteSize.y);
 
                     // change pixel mask to transparent
-                    Color[] pixelPallete = ReplaceMaskToTransparent(mask, sprites[index].GetPixels());
-                    atlas.SetPixels((int) spriteRect.x, (int) spriteRect.y, (int) spriteRect.width,
+                    Color32[] pixelPallete = ReplaceMaskToTransparent(mask, sprites[index].GetPixels32());
+                    atlas.SetPixels32((int) spriteRect.x, (int) spriteRect.y, (int) spriteRect.width,
                         (int) spriteRect.height, pixelPallete);
-                    atlas.Apply();
 
                     var importData = new SpriteImportData
                     {
@@ -220,12 +218,14 @@ namespace AsepriteImporter
                     break;
             }
 
+            atlas.Apply();
+
             spriteData = spriteImportData.ToArray();
             return atlas;
         }
 
         // step and replace all mask instances to clear
-        private static Color[] ReplaceMaskToTransparent(Color mask, Color[] pallete)
+        private static Color32[] ReplaceMaskToTransparent(Color mask, Color32[] pallete)
         {
             for (int i = 0; i < pallete.Length; i++)
             {

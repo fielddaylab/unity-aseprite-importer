@@ -104,6 +104,16 @@ namespace AsepriteImporter
                     editorBindingProperty.intValue = (int) editorBinding;
                 }
 
+                var generateAnimationsProperty = serializedObject.FindProperty(textureSettings + "generateAnimations");
+                var generateAnimations = generateAnimationsProperty.boolValue;
+
+                EditorGUI.BeginChangeCheck();
+                generateAnimations = EditorGUILayout.Toggle("Generate Animations", generateAnimations);
+                if (EditorGUI.EndChangeCheck())
+                {
+                    generateAnimationsProperty.boolValue = generateAnimations;
+                }
+
                 EditorGUILayout.Space();
 
                 var wrapModeProperty = serializedObject.FindProperty(textureSettings + "wrapMode");

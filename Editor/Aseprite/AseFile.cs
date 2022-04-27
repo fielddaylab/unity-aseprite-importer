@@ -19,6 +19,7 @@ namespace Aseprite
         public List<Frame> Frames { get; private set; }
 
         private Dictionary<Type, Chunk> chunkCache = new Dictionary<Type, Chunk>();
+        private Color32[] tempColorBuffer;
 
         public AseFile(Stream stream)
         {
@@ -27,6 +28,8 @@ namespace Aseprite
 
             Header = new Header(header);
             Frames = new List<Frame>();
+
+            tempColorBuffer = new Color32[Header.Width * Header.Height];
 
             while (reader.BaseStream.Position < reader.BaseStream.Length)
             {
@@ -164,8 +167,8 @@ namespace Aseprite
         {
             Frame frame = Frames[index];
 
-            Texture2D texture = Texture2DUtil.CreateTransparentTexture(Header.Width, Header.Height);
-
+            Color32[] textureColors;
+            Texture2D texture = Texture2DUtil.CreateTransparentTexture(Header.Width, Header.Height, out textureColors);
             
             List<LayerChunk> layers = GetChunks<LayerChunk>();
             List<CelChunk> cels = frame.GetChunks<CelChunk>();
@@ -197,34 +200,39 @@ namespace Aseprite
                 if (visibility == false || layer.LayerType == LayerType.Group)
                     continue;
 
-                Texture2D celTex = GetTextureFromCel(cels[i]);
+                Color32[] celColors = GetTextureDataFromCel(cels[i]);
+                Texture2DBlender.BlendDelegate blendFunc = null;
                 
                 switch (blendMode)
                 {
-                    case LayerBlendMode.Normal: texture = Texture2DBlender.Normal(texture, celTex); break;
-                    case LayerBlendMode.Multiply: texture = Texture2DBlender.Multiply(texture, celTex, opacity); break;
-                    case LayerBlendMode.Screen: texture = Texture2DBlender.Screen(texture, celTex); break;
-                    case LayerBlendMode.Overlay: texture = Texture2DBlender.Overlay(texture, celTex); break;
-                    case LayerBlendMode.Darken: texture = Texture2DBlender.Darken(texture, celTex); break;
-                    case LayerBlendMode.Lighten: texture = Texture2DBlender.Lighten(texture, celTex); break;
-                    case LayerBlendMode.ColorDodge: texture = Texture2DBlender.ColorDodge(texture, celTex); break;
-                    case LayerBlendMode.ColorBurn: texture = Texture2DBlender.ColorBurn(texture, celTex); break;
-                    case LayerBlendMode.HardLight: texture = Texture2DBlender.HardLight(texture, celTex); break;
-                    case LayerBlendMode.SoftLight: texture = Texture2DBlender.SoftLight(texture, celTex); break;
-                    case LayerBlendMode.Difference: texture = Texture2DBlender.Difference(texture, celTex); break;
-                    case LayerBlendMode.Exclusion: texture = Texture2DBlender.Exclusion(texture, celTex); break;
-                    case LayerBlendMode.Hue: texture = Texture2DBlender.Hue(texture, celTex); break;
-                    case LayerBlendMode.Saturation: texture = Texture2DBlender.Saturation(texture, celTex); break;
-                    case LayerBlendMode.Color: texture = Texture2DBlender.Color(texture, celTex); break;
-                    case LayerBlendMode.Luminosity: texture = Texture2DBlender.Luminosity(texture, celTex); break;
-                    case LayerBlendMode.Addition: texture = Texture2DBlender.Addition(texture, celTex); break;
-                    case LayerBlendMode.Subtract: texture = Texture2DBlender.Subtract(texture, celTex); break;
-                    case LayerBlendMode.Divide: texture = Texture2DBlender.Divide(texture, celTex); break;
+                    case LayerBlendMode.Normal: blendFunc = Texture2DBlender.Blend_Normal; break;
+                    case LayerBlendMode.Multiply: blendFunc = Texture2DBlender.Blend_Multiply; break;
+                    case LayerBlendMode.Screen: blendFunc = Texture2DBlender.Blend_Screen; break;
+                    case LayerBlendMode.Overlay: blendFunc = Texture2DBlender.Blend_Overlay; break;
+                    case LayerBlendMode.Darken: blendFunc = Texture2DBlender.Blend_Darken; break;
+                    case LayerBlendMode.Lighten: blendFunc = Texture2DBlender.Blend_Lighten;; break;
+                    case LayerBlendMode.ColorDodge: blendFunc = Texture2DBlender.Blend_ColorDodge; break;
+                    case LayerBlendMode.ColorBurn: blendFunc = Texture2DBlender.Blend_ColorBurn; break;
+                    case LayerBlendMode.HardLight: blendFunc = Texture2DBlender.Blend_HardLight; break;
+                    case LayerBlendMode.SoftLight: blendFunc = Texture2DBlender.Blend_SoftLight; break;
+                    case LayerBlendMode.Difference: blendFunc = Texture2DBlender.Blend_Difference; break;
+                    case LayerBlendMode.Exclusion: blendFunc = Texture2DBlender.Blend_Exclusion; break;
+                    case LayerBlendMode.Hue: blendFunc = Texture2DBlender.Blend_Hue; break;
+                    case LayerBlendMode.Saturation: blendFunc = Texture2DBlender.Blend_Saturation; break;
+                    case LayerBlendMode.Color: blendFunc = Texture2DBlender.Blend_Color; break;
+                    case LayerBlendMode.Luminosity: blendFunc = Texture2DBlender.Blend_Luminosity; break;
+                    case LayerBlendMode.Addition: blendFunc = Texture2DBlender.Blend_Addition; break;
+                    case LayerBlendMode.Subtract: blendFunc = Texture2DBlender.Blend_Subtract; break;
+                    case LayerBlendMode.Divide: blendFunc = Texture2DBlender.Blend_Divide; break;
+                }
+
+                if (blendFunc != null) {
+                    Texture2DBlender.Blend(textureColors, celColors, blendFunc, opacity);
                 }
             }
 
-            
-
+            texture.SetPixels32(textureColors);
+            texture.Apply();
             return texture;
         }
 
@@ -233,8 +241,8 @@ namespace Aseprite
             int canvasWidth = Header.Width;
             int canvasHeight = Header.Height;
             
-            Texture2D texture = Texture2DUtil.CreateTransparentTexture(canvasWidth, canvasHeight);
-            Color[] colors = new Color[canvasWidth * canvasHeight];
+            Color32[] colors;
+            Texture2D texture = Texture2DUtil.CreateTransparentTexture(canvasWidth, canvasHeight, out colors);
 
             int pixelIndex = 0;
             int celXEnd = cel.Width + cel.X;
@@ -254,17 +262,53 @@ namespace Aseprite
                     if (x >= 0 && x < canvasWidth)
                     {
                         int index = (canvasHeight - 1 - y) * canvasWidth + x;
-                        colors[index] = cel.RawPixelData[pixelIndex].GetColor();
+                        colors[index] = cel.RawPixelData[pixelIndex];
                     }
 
                     ++pixelIndex;
                 }
             }
 
-            texture.SetPixels(0, 0, canvasWidth, canvasHeight, colors);
+            texture.SetPixels32(0, 0, canvasWidth, canvasHeight, colors);
             texture.Apply();
 
             return texture;
+        }
+
+        private Color32[] GetTextureDataFromCel(CelChunk cel)
+        {
+            int canvasWidth = Header.Width;
+            int canvasHeight = Header.Height;
+            
+            Color32[] colors = tempColorBuffer;
+            Array.Clear(colors, 0, colors.Length);
+            
+            int pixelIndex = 0;
+            int celXEnd = cel.Width + cel.X;
+            int celYEnd = cel.Height + cel.Y;
+
+
+            for (int y = cel.Y; y < celYEnd; y++)
+            {
+                if (y < 0 || y >= canvasHeight)
+                {
+                    pixelIndex += cel.Width;
+                    continue;
+                }
+
+                for (int x = cel.X; x < celXEnd; x++)
+                {
+                    if (x >= 0 && x < canvasWidth)
+                    {
+                        int index = (canvasHeight - 1 - y) * canvasWidth + x;
+                        colors[index] = cel.RawPixelData[pixelIndex];
+                    }
+
+                    ++pixelIndex;
+                }
+            }
+
+            return colors;
         }
 
         public FrameTag[] GetAnimations()
@@ -317,7 +361,7 @@ namespace Aseprite
                             int texX = cel.X + x;
                             int texY = -(cel.Y + y) + Header.Height - 1;
                             var col = cel.RawPixelData[x + y * cel.Width];
-                            if (col.GetColor().a > 0.1f)
+                            if (col.a > 0.1f)
                             {
                                 center += new Vector2(texX, texY);
                                 pixelCount++;

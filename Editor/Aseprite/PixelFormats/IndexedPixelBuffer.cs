@@ -3,21 +3,18 @@ using UnityEngine;
 
 namespace Aseprite.PixelFormats
 {
-    public class IndexedPixel : Pixel
+    public class IndexedPixelBuffer : PixelBuffer
     {
-        public byte Index { get; private set; }
-
-        public IndexedPixel(Frame frame, byte index) : base(frame)
+        public IndexedPixelBuffer(Frame frame, byte[] indices) : base(frame, indices)
         {
-            Index = index;
         }
 
-        public override Color GetColor()
+        public override Color GetColor(int index)
         {
             PaletteChunk palette = Frame.File.GetChunk<PaletteChunk>();
 
             if (palette != null)
-                return palette.GetColor(Index);
+                return palette.GetColor(Data[index]);
             else
                 return Color.magenta;
         }

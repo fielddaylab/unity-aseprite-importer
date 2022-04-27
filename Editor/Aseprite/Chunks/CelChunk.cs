@@ -21,7 +21,7 @@ namespace Aseprite.Chunks
         public byte Opacity { get; set; }
         public CelType CelType { get; set; }
 
-        public virtual Pixel[] RawPixelData { get; protected set; }
+        public virtual PixelBuffer RawPixelData { get; protected set; }
 
 
         public CelChunk(uint length, ushort layerIndex, short x, short y, byte opacity, CelType type) : base(length, ChunkType.Cel)
@@ -36,34 +36,25 @@ namespace Aseprite.Chunks
         protected void ReadPixelData(BinaryReader reader, Frame frame)
         {
             int size = Width * Height;
-            RawPixelData = new Pixel[size];
-
-            switch (frame.File.Header.ColorDepth)
+            switch(frame.File.Header.ColorDepth)
             {
-                case ColorDepth.RGBA:
-                    for (int i = 0; i < size; i++)
-                    {
-                        byte[] color = reader.ReadBytes(4);
-
-                        RawPixelData[i] = new RGBAPixel(frame, color);
-                    }
+                case ColorDepth.RGBA: {
+                    byte[] buffer = reader.ReadBytes(size * 4);
+                    RawPixelData = new RGBAPixelBuffer(frame, buffer);
                     break;
-                case ColorDepth.Grayscale:
-                    for (int i = 0; i < size; i++)
-                    {
-                        byte[] color = reader.ReadBytes(2);
+                }
 
-                        RawPixelData[i] = new GrayscalePixel(frame, color);
-                    }
+                case ColorDepth.Grayscale: {
+                    byte[] buffer = reader.ReadBytes(size * 2);
+                    RawPixelData = new GrayscalePixelBuffer(frame, buffer);
                     break;
-                case ColorDepth.Indexed:
-                    for (int i = 0; i < size; i++)
-                    {
-                        byte color = reader.ReadByte();
+                }
 
-                        RawPixelData[i] = new IndexedPixel(frame, color);
-                    }
+                case ColorDepth.Indexed: {
+                    byte[] buffer = reader.ReadBytes(size);
+                    RawPixelData = new IndexedPixelBuffer(frame, buffer);
                     break;
+                }
             }
         }
 

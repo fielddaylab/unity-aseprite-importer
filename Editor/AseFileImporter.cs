@@ -7,6 +7,7 @@ using Aseprite;
 using UnityEditor;
 using Aseprite.Chunks;
 using System.Text;
+using System;
 
 namespace AsepriteImporter
 {
@@ -111,7 +112,11 @@ namespace AsepriteImporter
                 sprites[i] = sprite;
             }
 
-            GenerateAnimations(ctx, aseFile, sprites);
+            if (textureSettings.generateAnimations) {
+                GenerateAnimations(ctx, aseFile, sprites);
+            } else {
+                animationSettings = Array.Empty<AseFileAnimationSettings>();
+            }
         }
 
         private void ImportTileset(AssetImportContext ctx, Texture2D atlas)
